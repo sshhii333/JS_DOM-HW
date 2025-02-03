@@ -1,11 +1,13 @@
 let ToDoList = function () {
 	let data = [];
 	let lastId = 0;
-
 	let todoListElem;
+	let todoTitileElem;
+	let countStatus = 0;
 
-	this.add = (name) => { //добавлять в  хранилище
-		if (!name || name.length < 3) return;
+	this.add = (name) => {
+		if (!name) return;
+
 		lastId++;
 
 		let task = {
@@ -16,32 +18,41 @@ let ToDoList = function () {
 		};
 
 		data.push(task);
+		updateCount();
 	};
 
-	this.edit = (id, newName) => { // редактировать
-		if (!id || id <= 0 || !newName || newName.length < 3) return;
+	this.edit = (id, newName) => {
+		if (!newName) return;
 
-		let task = data.find((task) => {
+		let task = data.find((task) => {  //{id:2, name: task 2}
 			return task.id == id;
 		});
 
 		if (!task) return;
-
 		task.name = newName;
 		task.dateUpdate = Date.now();
+		updateCount();
 	};
 
 	this.remove = (id) => {
 		if (id === undefined) {
 			data = [];
+			countStatus = 0;
 		} else {
 			if (!id || id <= 0) return;
+
+			let taskToRemove = data.find(task => task.id === id);
+			if (taskToRemove && taskToRemove.status) {
+				countStatus--;
+			};
+
 			let dataTmp = data.filter((task) => {
 				return task.id != id;
 			});
 
 			data = dataTmp;
 		};
+		updateCount();
 	};
 
 	this.done = (id) => { // статуы true/false
@@ -55,6 +66,11 @@ let ToDoList = function () {
 
 		task.status = !task.status;
 		task.dateUpdate = Date.now();
+
+		if (task.status) countStatus++;
+		else countStatus--;
+
+		updateCount();
 	};
 
 	this.get = (id) => {
@@ -71,9 +87,57 @@ let ToDoList = function () {
 		return task;
 	};
 
-	let update = () => {
-		todoListElem.innerHTML = '';
+	let count = () => {
+		let count = data.length;
+		let elemCount = count - countStatus;
+		let taskCount;
 
+		if (count > 10) taskCount = 0;
+
+		switch (elemCount) {
+			case 10:
+			case 9:
+			case 8:
+			case 7:
+			case 6:
+			case 5:
+				taskCount = elemCount + ' дел';
+				break;
+			case 4:
+			case 3:
+			case 2:
+				taskCount = elemCount + ' делa';
+				break;
+			case 1:
+				taskCount = elemCount + ' делo';
+				break;
+			case 0:
+				taskCount = 'Дела решены';
+				break;
+		};
+
+		return taskCount;
+	};
+
+	let updateCount = () => {
+		todoTitileElem.innerHTML = count();
+	}
+
+	let getData = () => {
+		let data = new Date();
+		let opt = {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'long',
+		};
+
+		return data.toLocaleString('ru', opt);
+	};
+
+	let update = () => {
+		if (data.length > 10) return;
+
+		todoListElem.innerHTML = '';
 		data.forEach((task) => {
 			let todoLiElem = document.createElement('li');
 			todoLiElem.classList.add('todo__item');
@@ -86,11 +150,21 @@ let ToDoList = function () {
 			todoNameElem.classList.add('todo__name');
 			// todoNameElem.setAttribute('contenteditable', false);
 
+			let todoBtnEdit = document.createElement('button');
+			todoBtnEdit.classList.add('todo__btn', 'todo__btn_edit');
+
+			let todoBtnRemove = document.createElement('button');
+			todoBtnRemove.classList.add('todo__btn', 'todo__btn_remove');
 
 			todoNameElem.innerHTML = task.name;
 			todoCheckboxElem.checked = task.status;
 
-			todoLiElem.append(todoCheckboxElem, todoNameElem);
+			todoBtnEdit.innerHTML = 'edit';
+			todoBtnRemove.innerHTML = 'del';
+
+			todoLiElem.classList.toggle('checked', todoCheckboxElem.checked);
+
+			todoLiElem.append(todoCheckboxElem, todoNameElem, todoBtnEdit, todoBtnRemove);
 			todoListElem.append(todoLiElem);
 
 			todoCheckboxElem.addEventListener('change', () => {
@@ -98,27 +172,17 @@ let ToDoList = function () {
 				update();
 			});
 
-			todoNameElem.addEventListener('dblclick', (event) => {
-				let value = event.target.innerText;
-				if (!value) return;
+			todoBtnRemove.addEventListener('click', () => {
+				this.remove(task.id);
+				update();
+			});
 
-				let newName = prompt('', value);
+			todoBtnEdit.addEventListener('click', (e) => {
 
+				let value = todoNameElem.innerHTML;
+				let newName = prompt('Внесите изменения', value)
 				this.edit(task.id, newName);
 				update();
-
-				// event.target.contentEditable = true;
-
-				// todoNameElem.addEventListener('keypress', (event) => {
-				// 	if (event.code != 'Enter') return;
-
-				// 	event.target.contentEditable = false;
-
-				// 	let newName = event.target.innerText;
-
-				// 	this.edit(task.id, newName);
-				// 	update();
-				// });
 			});
 		});
 	};
@@ -127,7 +191,12 @@ let ToDoList = function () {
 		let todoElem = document.createElement('div');
 		todoElem.classList.add('todo');
 
-		let todoTitileElem = document.createElement('h3');
+		let todoHederElem = document.createElement('div');
+		todoHederElem.classList.add('todo__heder');
+		let todoDataElem = document.createElement('h2');
+		todoDataElem.classList.add('todo__data');
+
+		todoTitileElem = document.createElement('h3');
 		todoTitileElem.classList.add('todo__title');
 
 		let todoInputName = document.createElement('input');
@@ -141,20 +210,24 @@ let ToDoList = function () {
 		let todoBtnClear = document.createElement('button');
 		todoBtnClear.classList.add('todo__btn_clear');
 
-
-		todoTitileElem.innerHTML = 'ToDo List';
+		todoDataElem.innerHTML = getData();
+		todoTitileElem.innerHTML = count();
 		todoBtnClear.innerHTML = 'Clear';
 
-		todoElem.append(todoTitileElem, todoInputName, todoListElem, todoBtnClear);
-
+		todoHederElem.append(todoDataElem, todoTitileElem);
+		todoElem.append(todoHederElem, todoInputName, todoListElem, todoBtnClear);
 
 		document.body.append(todoElem);
 
-		todoInputName.addEventListener('keypress', (event) => {
-			if (event.key != "Enter") return;
-			this.add(event.target.value);
+		todoInputName.addEventListener('keypress', (e) => {
+			if (e.code != 'Enter') return;
+
+			let value = e.target.value;
+			if (!value) return;
+
+			this.add(value);
 			update();
-			event.target.value = '';
+			e.target.value = '';
 		});
 
 		todoBtnClear.addEventListener('click', () => {
@@ -162,13 +235,23 @@ let ToDoList = function () {
 			update();
 		});
 	};
-
 	showUi();
+
 };
 
 window.addEventListener('load', () => {
-	new ToDoList();
+
+new ToDoList();
+
 });
+
+
+
+
+
+
+
+
 
 
 
@@ -226,3 +309,7 @@ window.addEventListener('load', () => {
 27. Делаем функцию очитки и редактирования добавляем клик и двойной клик соответственно
 
 */
+
+
+
+
